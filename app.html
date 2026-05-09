@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VMS — Ứng Dụng Bảo Trì</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1a2234;
+    --border: #1e2d47;
+    --accent: #3b82f6;
+    --accent2: #06b6d4;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --charging: #f97316;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #475569;
+    --radius: 14px;
+    --font: 'Be Vietnam Pro', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+  /* LAYOUT */
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  #screen-login, #screen-main { position: absolute; inset: 0; transition: opacity .3s, transform .3s; }
+  #screen-login.hidden, #screen-main.hidden { opacity: 0; pointer-events: none; transform: translateY(10px); }
+
+  /* LOGIN */
+  #screen-login {
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    background-image: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(59,130,246,.18), transparent);
+  }
+  .login-box {
+    width: min(420px, 92vw);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 40px 36px;
+    box-shadow: 0 32px 80px rgba(0,0,0,.5);
+  }
+  .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+  .login-logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg,var(--accent),var(--accent2)); border-radius: 12px; display: grid; place-items: center; font-size: 22px; }
+  .login-logo h1 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+  .login-logo p { font-size: 11px; color: var(--text2); font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+  .form-input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 16px; color: var(--text); font-family: var(--font); font-size: 15px; outline: none; transition: border-color .2s; }
+  .form-input:focus { border-color: var(--accent); }
+  .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-family: var(--font); font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .btn-primary { background: linear-gradient(135deg,var(--accent),var(--accent2)); color: #fff; margin-top: 8px; }
+  .btn-primary:active { transform: scale(.98); }
+  .login-err { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; min-height: 20px; }
+
+  /* MAIN */
+  #screen-main { display: flex; flex-direction: column; }
+  .main-header { padding: 16px 20px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .header-greeting { font-size: 13px; color: var(--text2); }
+  .header-greeting strong { color: var(--text); font-weight: 700; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .avatar-sm { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg,var(--accent),var(--accent2)); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+
+  /* TABS */
+  .tab-content { flex: 1; overflow-y: auto; padding: 16px 16px 80px; }
+  .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 64px; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; transition: color .2s; color: var(--text3); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .tab-item.active { color: var(--accent); }
+  .tab-item svg { width: 22px; height: 22px; }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 12px; }
+
+  /* HOME TAB - 5 steps */
+  .step-header { text-align: center; padding: 8px 0 16px; }
+  .step-header h2 { font-size: 20px; font-weight: 800; }
+  .step-header p { color: var(--text2); font-size: 13px; margin-top: 4px; }
+  .step-scanner { margin-bottom: 16px; }
+  .scan-area { background: var(--surface2); border: 2px dashed var(--border); border-radius: var(--radius); padding: 24px; text-align: center; margin-bottom: 12px; cursor: pointer; transition: border-color .2s; }
+  .scan-area:active { border-color: var(--accent); }
+  .scan-icon { font-size: 40px; margin-bottom: 8px; }
+  .scan-area p { color: var(--text2); font-size: 13px; }
+  .scan-input-row { display: flex; gap: 8px; }
+  .scan-input-row .form-input { flex: 1; }
+  .btn-scan { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 12px 20px; font-family: var(--font); font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; }
+
+  /* VIN DETAIL CARD */
+  .vin-detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .vin-detail-header { padding: 14px 16px; background: linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.1)); border-bottom: 1px solid var(--border); }
+  .vin-number { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--accent2); letter-spacing: 1px; }
+  .vin-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  .badge-pass { background: rgba(16,185,129,.15); color: var(--success); }
+  .badge-pending { background: rgba(245,158,11,.15); color: var(--warning); }
+  .badge-notpass { background: rgba(239,68,68,.15); color: var(--danger); }
+  .badge-charging { background: rgba(249,115,22,.15); color: var(--charging); }
+  .badge-sold { background: rgba(148,163,184,.15); color: var(--text2); }
+  .vin-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 16px; }
+  .vin-info-item label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; color: var(--text3); display: block; margin-bottom: 3px; }
+  .vin-info-item span { font-size: 14px; font-weight: 600; }
+
+  /* STEP PROGRESS */
+  .step-progress { display: flex; align-items: center; gap: 0; margin-bottom: 20px; overflow-x: auto; padding: 0 4px; }
+  .step-dot { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; }
+  .step-dot-circle { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border); display: grid; place-items: center; font-size: 13px; font-weight: 700; transition: all .3s; flex-shrink: 0; background: var(--surface2); }
+  .step-dot-circle.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .step-dot-circle.done { border-color: var(--success); background: var(--success); color: #fff; }
+  .step-dot-label { font-size: 9px; text-align: center; color: var(--text3); margin-top: 4px; font-weight: 600; text-transform: uppercase; max-width: 48px; line-height: 1.3; }
+  .step-line { flex: 1; height: 2px; background: var(--border); min-width: 8px; }
+  .step-line.done { background: var(--success); }
+
+  /* STEP PANELS */
+  .step-panel { display: none; }
+  .step-panel.active { display: block; }
+  .step-panel h3 { font-size: 15px; font-weight: 700; margin-bottom: 14px; color: var(--text2); }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .btn-ok { background: rgba(16,185,129,.15); color: var(--success); border: 1.5px solid rgba(16,185,129,.3); border-radius: 10px; padding: 16px; font-family: var(--font); font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .btn-nok { background: rgba(239,68,68,.1); color: var(--danger); border: 1.5px solid rgba(239,68,68,.3); border-radius: 10px; padding: 16px; font-family: var(--font); font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s; }
+  .btn-ok:active { transform: scale(.97); background: rgba(16,185,129,.3); }
+  .btn-nok:active { transform: scale(.97); background: rgba(239,68,68,.2); }
+  .photo-upload { background: var(--surface2); border: 1.5px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; cursor: pointer; margin-top: 10px; }
+  .photo-upload input[type=file] { display: none; }
+  .photo-preview { width: 100%; border-radius: 8px; margin-top: 8px; display: none; max-height: 200px; object-fit: cover; }
+  .battery-barcode { font-family: var(--mono); font-size: 15px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 10px 0; word-break: break-all; }
+  .battery-info { background: rgba(6,182,212,.08); border: 1px solid rgba(6,182,212,.2); border-radius: 10px; padding: 14px; margin: 12px 0; }
+  .battery-info h4 { color: var(--accent2); font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .battery-info p { font-size: 13px; color: var(--text2); }
+  .measurement-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .measurement-item label { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .7px; display: block; margin-bottom: 6px; }
+  .measurement-item input { width: 100%; background: var(--surface2); border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 16px; font-weight: 600; outline: none; transition: border-color .2s; text-align: center; }
+  .measurement-item input:focus { border-color: var(--accent); }
+  .result-threshold { font-size: 11px; color: var(--text3); margin-top: 4px; text-align: center; }
+  .alert-charging { background: rgba(249,115,22,.1); border: 1px solid rgba(249,115,22,.3); border-radius: 10px; padding: 14px; margin: 10px 0; }
+  .alert-charging h4 { color: var(--charging); font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .alert-notpass { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 10px; padding: 14px; margin: 10px 0; }
+  .alert-notpass h4 { color: var(--danger); font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .maintenance-type-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .type-btn { background: var(--surface2); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 10px; text-align: center; cursor: pointer; transition: all .2s; }
+  .type-btn.selected { border-color: var(--accent); background: rgba(59,130,246,.1); }
+  .type-btn h4 { font-weight: 700; font-size: 13px; }
+  .type-btn p { color: var(--text2); font-size: 11px; margin-top: 3px; }
+
+  /* HISTORY TAB */
+  .history-tabs { display: flex; gap: 6px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
+  .htab { padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .htab.active { background: rgba(59,130,246,.15); color: var(--accent); border-color: rgba(59,130,246,.3); }
+  .history-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .history-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .history-vin { font-family: var(--mono); font-size: 16px; font-weight: 600; color: var(--accent2); }
+  .history-meta { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  .history-performer { font-size: 12px; color: var(--text2); margin-top: 6px; }
+
+  /* SUMMARY TAB */
+  .completion-ring { text-align: center; padding: 24px 0; }
+  .ring-container { position: relative; display: inline-block; }
+  .ring-svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--surface2); stroke-width: 12; }
+  .ring-fill { fill: none; stroke-width: 12; stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+  .ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-percent { font-size: 36px; font-weight: 800; }
+  .ring-label { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: .8px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .stat-card { background: var(--surface2); border-radius: 10px; padding: 14px 12px; }
+  .stat-card .val { font-size: 28px; font-weight: 800; }
+  .stat-card .lbl { font-size: 11px; color: var(--text2); margin-top: 2px; font-weight: 600; }
+  .stat-pending .val { color: var(--warning); }
+  .stat-pass .val { color: var(--success); }
+  .stat-notpass .val { color: var(--danger); }
+  .stat-charging .val { color: var(--charging); }
+
+  /* SETTINGS TAB */
+  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; display: flex; align-items: center; gap: 16px; }
+  .avatar-lg { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg,var(--accent),var(--accent2)); display: grid; place-items: center; font-weight: 800; font-size: 22px; flex-shrink: 0; }
+  .profile-info h3 { font-size: 17px; font-weight: 700; }
+  .profile-info p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .role-badge { display: inline-block; margin-top: 6px; padding: 2px 10px; background: rgba(59,130,246,.15); color: var(--accent); border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .settings-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; cursor: pointer; width: 100%; text-align: left; color: var(--text); font-family: var(--font); font-size: 14px; font-weight: 600; transition: border-color .2s; }
+  .settings-btn:active { border-color: var(--accent); }
+  .settings-btn-icon { width: 36px; height: 36px; border-radius: 8px; background: var(--surface2); display: grid; place-items: center; flex-shrink: 0; font-size: 18px; }
+  .settings-btn-chevron { margin-left: auto; color: var(--text3); }
+  .btn-logout { background: rgba(239,68,68,.1); color: var(--danger); border: 1.5px solid rgba(239,68,68,.2); border-radius: 12px; padding: 14px; margin-top: 6px; cursor: pointer; font-family: var(--font); font-weight: 700; font-size: 14px; width: 100%; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-height: 90vh; overflow-y: auto; padding: 20px; transform: translateY(40px); transition: transform .25s; }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 16px; }
+
+  /* LOADER */
+  .loader { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(11,15,26,.8); z-index: 300; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+  .loading-overlay p { color: var(--text2); font-size: 14px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* TOAST */
+  #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 20px; font-size: 13px; font-weight: 600; z-index: 500; transition: transform .3s; white-space: nowrap; max-width: 90vw; }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: var(--success); color: var(--success); }
+  #toast.error { border-color: var(--danger); color: var(--danger); }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- LOGIN -->
+<div id="screen-login">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">🚗</div>
+      <div>
+        <h1>VMS</h1>
+        <p>Vehicle Maintenance System</p>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Email đăng nhập</label>
+      <input class="form-input" id="login-email" type="email" placeholder="email@domain.com" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Mật khẩu</label>
+      <input class="form-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="btn-login">Đăng nhập</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="screen-main" class="hidden">
+  <div class="main-header">
+    <div class="header-greeting">
+      Xin chào, <strong id="hdr-name">–</strong>
+    </div>
+    <div class="header-right">
+      <div class="avatar-sm" id="hdr-avatar">?</div>
+    </div>
+  </div>
+
+  <!-- TAB CONTENTS -->
+  <div class="tab-content">
+    <!-- HOME -->
+    <div id="tab-home" class="tab-pane">
+      <div class="step-header">
+        <h2>🔧 Bảo Trì Xe</h2>
+        <p>Quét số VIN để bắt đầu quy trình 5 bước</p>
+      </div>
+
+      <!-- SCAN STEP -->
+      <div id="step-scan" class="step-scanner">
+        <div class="scan-area" id="scan-tap">
+          <div class="scan-icon">📷</div>
+          <p>Nhấn để quét QR / Barcode</p>
+        </div>
+        <div class="scan-input-row">
+          <input class="form-input" id="vin-input" type="text" placeholder="Hoặc nhập số VIN thủ công..." autocomplete="off" style="text-transform:uppercase;">
+          <button class="btn-scan" id="btn-vin-search">🔍</button>
+        </div>
+      </div>
+
+      <!-- VIN DETAIL + STEPS (hidden until scanned) -->
+      <div id="vin-workflow" style="display:none">
+        <!-- VIN INFO -->
+        <div class="vin-detail-card" id="vin-info-card">
+          <div class="vin-detail-header">
+            <div class="vin-number" id="vin-display">–</div>
+            <div class="vin-meta">
+              <span class="badge" id="vin-status-badge">–</span>
+            </div>
+          </div>
+          <div class="vin-info-grid">
+            <div class="vin-info-item"><label>Mẫu xe</label><span id="vin-model">–</span></div>
+            <div class="vin-info-item"><label>Màu sắc</label><span id="vin-color">–</span></div>
+            <div class="vin-info-item"><label>Vị trí đỗ</label><span id="vin-location">–</span></div>
+            <div class="vin-info-item"><label>Bảo trì tiếp</label><span id="vin-nextdate">–</span></div>
+          </div>
+        </div>
+
+        <!-- MAINTENANCE TYPE SELECTION -->
+        <div id="panel-type-select" class="step-panel active">
+          <p style="color:var(--text2);font-size:13px;margin-bottom:10px">Chọn loại bảo trì:</p>
+          <div class="maintenance-type-row">
+            <div class="type-btn selected" id="type-monthly" onclick="selectType('Monthly')">
+              <div style="font-size:22px">🔧</div>
+              <h4>Bảo dưỡng<br>hàng tháng</h4>
+            </div>
+            <div class="type-btn" id="type-pdi" onclick="selectType('PDI')">
+              <div style="font-size:22px">✅</div>
+              <h4>PDI</h4>
+              <p>Kiểm tra giao xe</p>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="startStep(2)" style="margin-top:12px">Bắt đầu →</button>
+        </div>
+
+        <!-- STEP PROGRESS BAR -->
+        <div id="step-progress-bar" style="display:none">
+          <div class="step-progress" id="step-progress"></div>
+        </div>
+
+        <!-- STEP 2: EXTERIOR -->
+        <div id="panel-s2" class="step-panel" style="display:none">
+          <div class="card">
+            <h3>👁️ B2 — Kiểm tra ngoại quan</h3>
+            <p style="color:var(--text2);font-size:13px;margin-bottom:14px">Kiểm tra toàn bộ ngoại quan xe. Có phát hiện hư hỏng không?</p>
+            <div class="btn-row">
+              <button class="btn-ok" onclick="exteriorOK()">✅ OK<br><small>Không lỗi</small></button>
+              <button class="btn-nok" onclick="exteriorNOK()">❌ NOK<br><small>Có lỗi</small></button>
+            </div>
+            <div id="exterior-nok-section" style="display:none">
+              <p style="color:var(--warning);font-size:13px;margin-top:14px;font-weight:600">📸 Chụp ảnh điểm lỗi và ghi chú:</p>
+              <textarea class="form-input" id="exterior-note" placeholder="Mô tả lỗi ngoại quan..." rows="3" style="margin-top:8px;resize:none;"></textarea>
+              <label class="photo-upload" id="exterior-photo-label">
+                <input type="file" id="exterior-photo-input" accept="image/*" capture="environment">
+                <div>📷 Chụp ảnh lỗi</div>
+                <img id="exterior-photo-preview" class="photo-preview">
+              </label>
+              <button class="btn btn-primary" onclick="exteriorNOKDone()" style="margin-top:10px">Xác nhận & Tiếp tục →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: BATTERY SCAN -->
+        <div id="panel-s3" class="step-panel" style="display:none">
+          <div class="card">
+            <h3>🔋 B3 — Quét mã bình ắc quy</h3>
+            <div class="scan-area" onclick="document.getElementById('battery-scan-input').focus()" style="margin-bottom:10px">
+              <div class="scan-icon">📷</div>
+              <p>Quét QR bình ắc quy</p>
+            </div>
+            <input class="form-input" id="battery-scan-input" placeholder="Hoặc nhập mã bình..." oninput="identifyBattery(this.value)" style="text-transform:uppercase;">
+            <div id="battery-identified" style="display:none"></div>
+            <button class="btn btn-primary" id="btn-go-s4" onclick="goToStep4()" style="margin-top:12px;display:none">Tiếp tục →</button>
+          </div>
+        </div>
+
+        <!-- STEP 4: BATTERY MEASURE -->
+        <div id="panel-s4" class="step-panel" style="display:none">
+          <div class="card">
+            <h3>⚡ B4 — Đo kiểm bình ắc quy</h3>
+            <p style="color:var(--text2);font-size:13px;margin-bottom:14px" id="s4-attempt-label">Lần đo thứ nhất</p>
+            <div id="battery-threshold-info" class="battery-info"></div>
+            <div class="measurement-grid">
+              <div class="measurement-item">
+                <label>CCA (A)</label>
+                <input type="number" id="cca-input" placeholder="0" oninput="checkMeasurement()">
+                <div class="result-threshold" id="cca-threshold">–</div>
+              </div>
+              <div class="measurement-item">
+                <label>Voltage (V)</label>
+                <input type="number" id="vol-input" placeholder="0.0" step="0.1" oninput="checkMeasurement()">
+                <div class="result-threshold" id="vol-threshold">–</div>
+              </div>
+            </div>
+            <label class="photo-upload" id="battery-photo-label">
+              <input type="file" id="battery-photo-input" accept="image/*" capture="environment">
+              <div>📷 Chụp ảnh kết quả máy đo <span style="color:var(--danger)">*</span></div>
+              <img id="battery-photo-preview" class="photo-preview">
+            </label>
+            <div id="measurement-result-actions" style="margin-top:12px;display:none"></div>
+          </div>
+        </div>
+
+        <!-- STEP 5: SAVE -->
+        <div id="panel-s5" class="step-panel" style="display:none">
+          <div class="card">
+            <h3>💾 B5 — Lưu kết quả</h3>
+            <div id="final-summary"></div>
+            <button class="btn btn-primary" id="btn-save-final" onclick="saveFinal()" style="margin-top:14px">
+              <span id="save-btn-text">Lưu & Hoàn thành ✓</span>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- end vin-workflow -->
+    </div><!-- end tab-home -->
+
+    <!-- HISTORY -->
+    <div id="tab-history" class="tab-pane" style="display:none">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:14px">📋 Lịch sử bảo trì</h2>
+      <div class="history-tabs">
+        <div class="htab active" onclick="filterHistory('all',this)">Tất cả</div>
+        <div class="htab" onclick="filterHistory('Pass',this)">Pass ✅</div>
+        <div class="htab" onclick="filterHistory('Not Pass',this)">Not Pass ❌</div>
+        <div class="htab" onclick="filterHistory('Charging',this)">Sạc 🔋</div>
+      </div>
+      <div id="history-list"><div style="text-align:center;color:var(--text3);padding:40px">Đang tải...</div></div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div id="tab-summary" class="tab-pane" style="display:none">
+      <h2 style="font-size:18px;font-weight:800;margin-bottom:14px">📊 Tổng hợp hôm nay</h2>
+      <div class="card">
+        <div class="completion-ring">
+          <div class="ring-container">
+            <svg class="ring-svg" width="150" height="150" viewBox="0 0 150 150">
+              <circle class="ring-bg" cx="75" cy="75" r="60"/>
+              <circle class="ring-fill" id="ring-fill" cx="75" cy="75" r="60" stroke="url(#rg)" stroke-dasharray="377" stroke-dashoffset="377"/>
+              <defs>
+                <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#3b82f6"/>
+                  <stop offset="100%" stop-color="#06b6d4"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <div class="ring-text">
+              <div class="ring-percent" id="ring-pct">0%</div>
+              <div class="ring-label">Hoàn thành</div>
+            </div>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card stat-pending"><div class="val" id="stat-pending">0</div><div class="lbl">📋 Cần thực hiện</div></div>
+          <div class="stat-card stat-pass"><div class="val" id="stat-pass">0</div><div class="lbl">✅ Đã Pass hôm nay</div></div>
+          <div class="stat-card stat-notpass"><div class="val" id="stat-notpass">0</div><div class="lbl">❌ Not Pass</div></div>
+          <div class="stat-card stat-charging"><div class="val" id="stat-charging">0</div><div class="lbl">🔋 Đang sạc</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="tab-pane" style="display:none">
+      <div class="profile-card">
+        <div class="avatar-lg" id="settings-avatar">?</div>
+        <div class="profile-info">
+          <h3 id="settings-name">–</h3>
+          <p id="settings-email">–</p>
+          <p id="settings-org" style="color:var(--text3);font-size:11px;margin-top:2px">–</p>
+          <span class="role-badge" id="settings-role">–</span>
+        </div>
+      </div>
+      <button class="settings-btn" onclick="openModal('modal-profile')">
+        <div class="settings-btn-icon">👤</div>
+        <div><div>Thông tin cá nhân</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Xem và cập nhật hồ sơ</div></div>
+        <span class="settings-btn-chevron">›</span>
+      </button>
+      <button class="settings-btn" onclick="openModal('modal-password')">
+        <div class="settings-btn-icon">🔒</div>
+        <div><div>Đổi mật khẩu</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Thay đổi mật khẩu đăng nhập</div></div>
+        <span class="settings-btn-chevron">›</span>
+      </button>
+      <button class="btn-logout" onclick="doLogout()">Đăng xuất</button>
+    </div>
+  </div><!-- end tab-content -->
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab-item active" id="tabbar-home" onclick="switchTab('home')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Trang chủ
+    </div>
+    <div class="tab-item" id="tabbar-history" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Lịch sử
+    </div>
+    <div class="tab-item" id="tabbar-summary" onclick="switchTab('summary')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Tổng hợp
+    </div>
+    <div class="tab-item" id="tabbar-settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Cài đặt
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Thông tin cá nhân</div>
+    <div class="form-group"><label>Họ và tên</label><input class="form-input" id="profile-name" type="text"></div>
+    <div class="form-group"><label>Email</label><input class="form-input" id="profile-email" type="email" disabled></div>
+    <div class="form-group"><label>Xác nhận mật khẩu để lưu</label><input class="form-input" id="profile-confirm-pass" type="password" placeholder="Nhập mật khẩu..."></div>
+    <button class="btn btn-primary" onclick="saveProfile()">Lưu thay đổi</button>
+    <button class="btn" style="background:var(--surface2);margin-top:8px" onclick="closeModal('modal-profile')">Hủy</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-password">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Đổi mật khẩu</div>
+    <div class="form-group"><label>Mật khẩu cũ</label><input class="form-input" id="old-pass" type="password"></div>
+    <div class="form-group"><label>Mật khẩu mới</label><input class="form-input" id="new-pass" type="password"></div>
+    <div class="form-group"><label>Xác nhận mật khẩu mới</label><input class="form-input" id="confirm-new-pass" type="password"></div>
+    <button class="btn btn-primary" onclick="doChangePassword()">Đổi mật khẩu</button>
+    <button class="btn" style="background:var(--surface2);margin-top:8px" onclick="closeModal('modal-password')">Hủy</button>
+  </div>
+</div>
+
+<div id="toast">–</div>
+<div id="loading" class="loading-overlay" style="display:none"><div class="loader"></div><p id="loading-text">Đang xử lý...</p></div>
+
+<script>
+// ============================================================
+// CONFIG - Thay URL Google Apps Script của bạn vào đây
+// ============================================================
+const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  token: localStorage.getItem('vms_token'),
+  user: JSON.parse(localStorage.getItem('vms_user') || 'null'),
+  currentTab: 'home',
+  currentVIN: null,
+  batteryConditions: [],
+  maintenanceType: 'Monthly',
+  maintenanceData: {
+    scanTime: null, vin: null,
+    exteriorResult: null, exteriorPhoto: null, exteriorNote: null, exteriorTime: null,
+    batteryBarcode: null, batteryType: null, batteryCondition: null,
+    cca1: null, vol1: null, batteryResult1: null, batteryTime1: null, batteryPhoto1: null,
+    cca2: null, vol2: null, batteryResult2: null, batteryTime2: null, batteryPhoto2: null,
+    finalResult: null, isSecondAttempt: false
+  },
+  historyFilter: 'all',
+  historyData: []
+};
+
+// ============================================================
+// API
+// ============================================================
+async function api(action, params = {}) {
+  const body = { action, token: state.token, ...params };
+  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+  return res.json();
+}
+
+function showLoading(msg = 'Đang xử lý...') {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('loading-text').textContent = msg;
+}
+function hideLoading() { document.getElementById('loading').style.display = 'none'; }
+
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type ? `show ${type}` : 'show';
+  setTimeout(() => { el.className = type; }, 3000);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+document.getElementById('btn-login').onclick = async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pass').value;
+  if (!email || !password) { document.getElementById('login-err').textContent = 'Vui lòng nhập đầy đủ thông tin'; return; }
+  showLoading('Đang đăng nhập...');
+  try {
+    const res = await api('login', { email, password });
+    hideLoading();
+    if (res.success) {
+      state.token = res.token;
+      state.user = res.user;
+      localStorage.setItem('vms_token', res.token);
+      localStorage.setItem('vms_user', JSON.stringify(res.user));
+      showApp();
+    } else {
+      document.getElementById('login-err').textContent = res.error;
+    }
+  } catch(e) { hideLoading(); document.getElementById('login-err').textContent = 'Lỗi kết nối. Kiểm tra cấu hình API.'; }
+};
+
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-login').click(); });
+
+async function doLogout() {
+  if (state.token) await api('logout').catch(() => {});
+  localStorage.removeItem('vms_token');
+  localStorage.removeItem('vms_user');
+  state.token = null; state.user = null;
+  document.getElementById('screen-main').classList.add('hidden');
+  document.getElementById('screen-login').classList.remove('hidden');
+}
+
+function showApp() {
+  document.getElementById('screen-login').classList.add('hidden');
+  document.getElementById('screen-main').classList.remove('hidden');
+  const u = state.user;
+  const initials = u.name ? u.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() : '?';
+  document.getElementById('hdr-name').textContent = u.name || u.email;
+  document.getElementById('hdr-avatar').textContent = initials;
+  document.getElementById('settings-avatar').textContent = initials;
+  document.getElementById('settings-name').textContent = u.name || '–';
+  document.getElementById('settings-email').textContent = u.email || '–';
+  const roleLabels = {1:'Admin Tổng',2:'Admin Tổ Chức',3:'Quản Lý',4:'Thành Viên'};
+  document.getElementById('settings-role').textContent = roleLabels[u.role] || '–';
+  loadDashboard();
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tab).style.display = 'block';
+  document.getElementById('tabbar-' + tab).classList.add('active');
+  state.currentTab = tab;
+  if (tab === 'history') loadHistory();
+  if (tab === 'summary') loadDashboard();
+  if (tab === 'settings') loadSettings();
+}
+
+// ============================================================
+// HOME / VIN SCAN
+// ============================================================
+document.getElementById('btn-vin-search').onclick = () => searchVIN(document.getElementById('vin-input').value.trim().toUpperCase());
+document.getElementById('vin-input').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-vin-search').click(); });
+
+async function searchVIN(vin) {
+  if (!vin) { toast('Nhập số VIN', 'error'); return; }
+  showLoading('Đang tìm VIN...');
+  try {
+    const res = await api('getVINDetail', { vin });
+    hideLoading();
+    if (!res.success) { toast(res.error, 'error'); return; }
+    state.currentVIN = res.data;
+    state.batteryConditions = res.batteryConditions || [];
+    state.maintenanceData = { scanTime: new Date().toISOString(), vin, exteriorResult: null, exteriorPhoto: null, batteryBarcode: null, batteryType: null, batteryCondition: null, cca1: null, vol1: null, batteryResult1: null, cca2: null, vol2: null, batteryResult2: null, isSecondAttempt: false };
+    renderVINCard(res.data);
+    showVINWorkflow();
+    resetWorkflow();
+  } catch(e) { hideLoading(); toast('Lỗi kết nối', 'error'); }
+}
+
+function renderVINCard(v) {
+  document.getElementById('vin-display').textContent = v.VIN;
+  document.getElementById('vin-model').textContent = v.Model || '–';
+  document.getElementById('vin-color').textContent = v.Color || '–';
+  document.getElementById('vin-location').textContent = v.ParkingLocation || '–';
+  const nextdate = v.NextMaintenanceDate ? new Date(v.NextMaintenanceDate).toLocaleDateString('vi-VN') : '–';
+  document.getElementById('vin-nextdate').textContent = nextdate;
+  const badge = document.getElementById('vin-status-badge');
+  const cls = { 'Pass': 'badge-pass', 'Pending': 'badge-pending', 'Not Pass': 'badge-notpass', 'Charging': 'badge-charging', 'Đã bán': 'badge-sold' };
+  badge.className = 'badge ' + (cls[v.Status] || '');
+  const icons = { 'Pass':'✅','Pending':'⏳','Not Pass':'❌','Charging':'🔋','Đã bán':'🏷️' };
+  badge.textContent = (icons[v.Status] || '') + ' ' + v.Status;
+}
+
+function showVINWorkflow() {
+  document.getElementById('vin-workflow').style.display = 'block';
+  document.getElementById('step-scan').style.marginBottom = '12px';
+}
+
+function resetWorkflow() {
+  document.getElementById('panel-type-select').classList.add('active');
+  document.getElementById('step-progress-bar').style.display = 'none';
+  ['panel-s2','panel-s3','panel-s4','panel-s5'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+    document.getElementById(id).classList.remove('active');
+  });
+  state.maintenanceType = 'Monthly';
+  document.getElementById('type-monthly').classList.add('selected');
+  document.getElementById('type-pdi').classList.remove('selected');
+}
+
+function selectType(type) {
+  state.maintenanceType = type;
+  document.getElementById('type-monthly').classList.toggle('selected', type === 'Monthly');
+  document.getElementById('type-pdi').classList.toggle('selected', type === 'PDI');
+}
+
+const STEP_LABELS = ['Loại','Ngoại quan','Bình ắc quy','Đo kiểm','Lưu'];
+function startStep(stepNum) {
+  document.getElementById('panel-type-select').classList.remove('active');
+  document.getElementById('step-progress-bar').style.display = 'block';
+  renderProgressBar(stepNum);
+  ['panel-s2','panel-s3','panel-s4','panel-s5'].forEach((id, i) => {
+    document.getElementById(id).style.display = (i + 2 === stepNum) ? 'block' : 'none';
+  });
+}
+
+function renderProgressBar(activeStep) {
+  const steps = [2, 3, 4, 5];
+  let html = '';
+  steps.forEach((s, i) => {
+    const done = s < activeStep;
+    const active = s === activeStep;
+    html += `<div class="step-dot"><div class="step-dot-circle ${done?'done':active?'active':''}">${done?'✓':s-1}</div><div class="step-dot-label">${STEP_LABELS[i+1]}</div></div>`;
+    if (i < steps.length - 1) html += `<div class="step-line ${done?'done':''}"></div>`;
+  });
+  document.getElementById('step-progress').innerHTML = html;
+}
+
+// EXTERIOR
+function exteriorOK() {
+  state.maintenanceData.exteriorResult = 'OK';
+  state.maintenanceData.exteriorTime = new Date().toISOString();
+  renderProgressBar(3); startStep(3);
+}
+
+function exteriorNOK() {
+  document.getElementById('exterior-nok-section').style.display = 'block';
+}
+
+function exteriorNOKDone() {
+  const note = document.getElementById('exterior-note').value;
+  state.maintenanceData.exteriorResult = 'NOK';
+  state.maintenanceData.exteriorNote = note;
+  state.maintenanceData.exteriorTime = new Date().toISOString();
+  // photo handled separately
+  renderProgressBar(3); startStep(3);
+}
+
+document.getElementById('exterior-photo-input').onchange = function() {
+  const file = this.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('exterior-photo-preview');
+    preview.src = e.target.result; preview.style.display = 'block';
+    state.maintenanceData.exteriorPhoto = e.target.result.substring(0, 200) + '...'; // truncate for storage
+  };
+  reader.readAsDataURL(file);
+};
+
+// BATTERY SCAN
+function identifyBattery(barcode) {
+  if (!barcode || barcode.length < 5) { document.getElementById('battery-identified').style.display = 'none'; document.getElementById('btn-go-s4').style.display = 'none'; return; }
+  const bc = state.batteryConditions.find(b => barcode.toUpperCase().startsWith(b.BatteryCode.toUpperCase()));
+  if (bc) {
+    state.maintenanceData.batteryBarcode = barcode;
+    state.maintenanceData.batteryType = bc.BatteryType;
+    state.maintenanceData.batteryCondition = bc;
+    document.getElementById('battery-identified').innerHTML = `<div class="battery-info" style="display:block"><h4>🔋 Bình ${bc.BatteryType}</h4><p>Yêu cầu: CCA > ${bc.MinCCA}A | Voltage > ${bc.MinVoltage}V</p></div>`;
+    document.getElementById('battery-identified').style.display = 'block';
+    document.getElementById('btn-go-s4').style.display = 'block';
+  } else {
+    document.getElementById('battery-identified').innerHTML = `<div class="alert-notpass"><h4>❓ Không nhận dạng được</h4><p>Mã: ${barcode}. Kiểm tra lại hoặc nhập thủ công.</p></div>`;
+    document.getElementById('battery-identified').style.display = 'block';
+    document.getElementById('btn-go-s4').style.display = 'none';
+  }
+}
+
+function goToStep4() {
+  const bc = state.maintenanceData.batteryCondition;
+  if (!bc) return;
+  state.maintenanceData.isSecondAttempt = false;
+  renderProgressBar(4); startStep(4);
+  document.getElementById('s4-attempt-label').textContent = 'Lần đo thứ nhất';
+  document.getElementById('battery-threshold-info').innerHTML = `<h4>🔋 Bình ${bc.BatteryType}</h4><p>Ngưỡng đạt: CCA > ${bc.MinCCA}A và Voltage > ${bc.MinVoltage}V</p>`;
+  document.getElementById('cca-threshold').textContent = `> ${bc.MinCCA}A`;
+  document.getElementById('vol-threshold').textContent = `> ${bc.MinVoltage}V`;
+  document.getElementById('cca-input').value = '';
+  document.getElementById('vol-input').value = '';
+  document.getElementById('measurement-result-actions').style.display = 'none';
+  const preview = document.getElementById('battery-photo-preview');
+  preview.style.display = 'none'; preview.src = '';
+}
+
+function checkMeasurement() {
+  const cca = parseFloat(document.getElementById('cca-input').value);
+  const vol = parseFloat(document.getElementById('vol-input').value);
+  const bc = state.maintenanceData.batteryCondition;
+  if (!bc || isNaN(cca) || isNaN(vol)) return;
+  
+  const ccaOk = cca > parseFloat(bc.MinCCA);
+  const volOk = vol > parseFloat(bc.MinVoltage);
+  
+  document.getElementById('cca-threshold').style.color = ccaOk ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('vol-threshold').style.color = volOk ? 'var(--success)' : 'var(--danger)';
+  
+  const actions = document.getElementById('measurement-result-actions');
+  if (ccaOk && volOk) {
+    actions.style.display = 'block';
+    actions.innerHTML = `<div style="color:var(--success);font-weight:700;margin-bottom:10px">✅ Đạt tiêu chuẩn!</div><button class="btn btn-primary" onclick="confirmBatteryOK()">Xác nhận OK →</button>`;
+  } else {
+    actions.style.display = 'block';
+    if (state.maintenanceData.isSecondAttempt) {
+      actions.innerHTML = `<div class="alert-notpass"><h4>❌ Bình không đạt (lần 2)</h4><p>Đưa xe đi sửa chữa.</p></div><button class="btn btn-primary" onclick="confirmBatteryNOK2(${cca},${vol})">Ghi nhận & Chuyển trạng thái →</button>`;
+    } else {
+      actions.innerHTML = `<div class="alert-charging"><h4>⚠️ Bình không đạt</h4><p>Cần sạc lại và đo sau 3 giờ.</p></div><button class="btn btn-primary" onclick="confirmNeedsCharging(${cca},${vol})">Ghi nhận & Chuyển sang Sạc →</button>`;
+    }
+  }
+}
+
+function confirmBatteryOK() {
+  const cca = parseFloat(document.getElementById('cca-input').value);
+  const vol = parseFloat(document.getElementById('vol-input').value);
+  if (state.maintenanceData.isSecondAttempt) {
+    state.maintenanceData.cca2 = cca; state.maintenanceData.vol2 = vol;
+    state.maintenanceData.batteryResult2 = 'OK'; state.maintenanceData.batteryTime2 = new Date().toISOString();
+  } else {
+    state.maintenanceData.cca1 = cca; state.maintenanceData.vol1 = vol;
+    state.maintenanceData.batteryResult1 = 'OK'; state.maintenanceData.batteryTime1 = new Date().toISOString();
+  }
+  state.maintenanceData.finalResult = state.maintenanceData.exteriorResult === 'NOK' ? 'Not Pass' : 'Pass';
+  renderProgressBar(5); startStep(5);
+  renderFinalSummary();
+}
+
+async function confirmNeedsCharging(cca, vol) {
+  state.maintenanceData.cca1 = cca; state.maintenanceData.vol1 = vol;
+  state.maintenanceData.batteryResult1 = 'NOK'; state.maintenanceData.batteryTime1 = new Date().toISOString();
+  state.maintenanceData.finalResult = 'Charging';
+  showLoading('Đang lưu...');
+  try {
+    const res = await api('saveMaintenance', { ...state.maintenanceData, maintenanceType: state.maintenanceType });
+    hideLoading();
+    if (res.success) {
+      toast('🔋 VIN chuyển sang trạng thái Sạc. Mở khóa sau 3 giờ.', 'success');
+      resetAfterSave();
+    } else { toast(res.error, 'error'); }
+  } catch(e) { hideLoading(); toast('Lỗi kết nối', 'error'); }
+}
+
+async function confirmBatteryNOK2(cca, vol) {
+  state.maintenanceData.cca2 = cca; state.maintenanceData.vol2 = vol;
+  state.maintenanceData.batteryResult2 = 'NOK'; state.maintenanceData.batteryTime2 = new Date().toISOString();
+  state.maintenanceData.finalResult = 'Not Pass';
+  renderProgressBar(5); startStep(5);
+  renderFinalSummary();
+}
+
+document.getElementById('battery-photo-input').onchange = function() {
+  const file = this.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const preview = document.getElementById('battery-photo-preview');
+    preview.src = e.target.result; preview.style.display = 'block';
+    if (state.maintenanceData.isSecondAttempt) state.maintenanceData.batteryPhoto2 = e.target.result.substring(0,200)+'...';
+    else state.maintenanceData.batteryPhoto1 = e.target.result.substring(0,200)+'...';
+  };
+  reader.readAsDataURL(file);
+};
+
+function renderFinalSummary() {
+  const d = state.maintenanceData;
+  const extIcon = d.exteriorResult === 'OK' ? '✅' : '❌';
+  const batIcon = (d.batteryResult2 || d.batteryResult1) === 'OK' ? '✅' : d.finalResult === 'Charging' ? '🔋' : '❌';
+  const finalColor = d.finalResult === 'Pass' ? 'var(--success)' : d.finalResult === 'Not Pass' ? 'var(--danger)' : 'var(--charging)';
+  document.getElementById('final-summary').innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Ngoại quan</span><span>${extIcon} ${d.exteriorResult}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">Loại bình</span><span>${d.batteryType || '–'}</span></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">CCA / Volt (lần 1)</span><span>${d.cca1||'–'} A / ${d.vol1||'–'} V</span></div>
+      ${d.cca2 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text2)">CCA / Volt (lần 2)</span><span>${d.cca2} A / ${d.vol2} V</span></div>` : ''}
+      <div style="display:flex;justify-content:space-between;padding:10px 0;"><span style="font-weight:700">Kết quả</span><span style="font-weight:800;color:${finalColor}">${d.finalResult}</span></div>
+    </div>`;
+}
+
+async function saveFinal() {
+  document.getElementById('save-btn-text').innerHTML = '<span class="loader"></span>';
+  try {
+    const res = await api('saveMaintenance', { ...state.maintenanceData, maintenanceType: state.maintenanceType });
+    if (res.success) {
+      const msg = state.maintenanceData.finalResult === 'Pass' ? '✅ Hoàn thành! VIN chuyển sang Pass.' : '❌ Ghi nhận Not Pass. Đưa xe đi sửa chữa.';
+      toast(msg, res.success ? 'success' : '');
+      resetAfterSave();
+    } else { toast(res.error, 'error'); }
+  } catch(e) { toast('Lỗi kết nối', 'error'); }
+  document.getElementById('save-btn-text').textContent = 'Lưu & Hoàn thành ✓';
+}
+
+function resetAfterSave() {
+  document.getElementById('vin-workflow').style.display = 'none';
+  document.getElementById('vin-input').value = '';
+  state.currentVIN = null;
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+async function loadHistory() {
+  showLoading('Đang tải lịch sử...');
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const res = await api('getMaintenanceHistory', { date: today });
+    hideLoading();
+    if (res.success) { state.historyData = res.data; renderHistory(); }
+  } catch(e) { hideLoading(); }
+}
+
+function filterHistory(filter, el) {
+  state.historyFilter = filter;
+  document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderHistory();
+}
+
+function renderHistory() {
+  let data = state.historyData;
+  if (state.historyFilter !== 'all') data = data.filter(r => r.FinalResult === state.historyFilter);
+  const list = document.getElementById('history-list');
+  if (!data.length) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:40px">Không có dữ liệu</div>'; return; }
+  const statusColors = { 'Pass':'var(--success)', 'Not Pass':'var(--danger)', 'Charging':'var(--charging)' };
+  list.innerHTML = data.map(r => `
+    <div class="history-item">
+      <div class="history-item-header">
+        <div><div class="history-vin">${r.VIN}</div><div class="history-meta">${formatDate(r.ScanTime)}</div></div>
+        <span style="font-size:12px;font-weight:700;color:${statusColors[r.FinalResult]||'var(--text2)'}">${r.FinalResult}</span>
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px;color:var(--text2)">
+        <span>Ngoại quan: <strong style="color:${r.ExteriorResult==='OK'?'var(--success)':'var(--danger)'}">${r.ExteriorResult||'–'}</strong></span>
+        <span>Bình: <strong>${r.BatteryType||'–'}</strong></span>
+      </div>
+      <div class="history-performer">👤 ${r.PerformedBy}</div>
+    </div>`).join('');
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function loadDashboard() {
+  try {
+    const res = await api('getDashboard');
+    if (!res.success) return;
+    const d = res.data;
+    document.getElementById('stat-pending').textContent = d.total || 0;
+    document.getElementById('stat-pass').textContent = d.passToday || 0;
+    document.getElementById('stat-notpass').textContent = d.notPass || 0;
+    document.getElementById('stat-charging').textContent = d.charging || 0;
+    const pct = d.completionRate || 0;
+    document.getElementById('ring-pct').textContent = pct + '%';
+    const offset = 377 - (377 * pct / 100);
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('ring-fill').style.stroke = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--accent)';
+  } catch(e) {}
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function loadSettings() {
+  const u = state.user;
+  document.getElementById('profile-name').value = u.name || '';
+  document.getElementById('profile-email').value = u.email || '';
+}
+
+async function saveProfile() {
+  const name = document.getElementById('profile-name').value.trim();
+  const pass = document.getElementById('profile-confirm-pass').value;
+  if (!pass) { toast('Nhập mật khẩu để xác nhận', 'error'); return; }
+  showLoading('Đang cập nhật...');
+  const res = await api('updateUser', { userId: state.user.id, fullName: name }).catch(() => null);
+  hideLoading();
+  if (res && res.success) { state.user.name = name; localStorage.setItem('vms_user', JSON.stringify(state.user)); toast('Cập nhật thành công', 'success'); closeModal('modal-profile'); }
+  else toast('Lỗi cập nhật', 'error');
+}
+
+async function doChangePassword() {
+  const oldP = document.getElementById('old-pass').value;
+  const newP = document.getElementById('new-pass').value;
+  const confP = document.getElementById('confirm-new-pass').value;
+  if (newP !== confP) { toast('Mật khẩu mới không khớp', 'error'); return; }
+  if (newP.length < 6) { toast('Mật khẩu ít nhất 6 ký tự', 'error'); return; }
+  showLoading();
+  const res = await api('changePassword', { oldPassword: oldP, newPassword: newP }).catch(() => null);
+  hideLoading();
+  if (res && res.success) { toast('Đổi mật khẩu thành công', 'success'); closeModal('modal-password'); }
+  else toast(res?.error || 'Lỗi', 'error');
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ============================================================
+// UTILS
+// ============================================================
+function formatDate(iso) {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+if (state.token && state.user) {
+  document.getElementById('screen-login').classList.add('hidden');
+  document.getElementById('screen-main').classList.remove('hidden');
+  showApp();
+} else {
+  document.getElementById('screen-main').classList.add('hidden');
+}
+</script>
+</body>
+</html>
