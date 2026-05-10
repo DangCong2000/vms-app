@@ -247,6 +247,7 @@
       Xin chào, <strong id="hdr-name">–</strong>
     </div>
     <div class="header-right">
+      <button id="lang-btn" onclick="toggleLang()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer">🇬🇧 EN</button>
       <div class="avatar-sm" id="hdr-avatar">?</div>
     </div>
   </div>
@@ -262,10 +263,11 @@
 
       <!-- SCAN STEP -->
       <div id="step-scan" class="step-scanner">
-        <div class="scan-area" id="scan-tap">
+        <label class="scan-area" for="vin-camera-input" style="cursor:pointer">
           <div class="scan-icon">📷</div>
-          <p>Nhấn để quét QR / Barcode</p>
-        </div>
+          <p id="scan-tap-label">Nhấn để quét QR / Barcode VIN</p>
+          <input type="file" id="vin-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleVINCamera(this)">
+        </label>
         <div class="scan-input-row">
           <input class="form-input" id="vin-input" type="text" placeholder="Hoặc nhập số VIN thủ công..." autocomplete="off" style="text-transform:uppercase;">
           <button class="btn-scan" id="btn-vin-search">🔍</button>
@@ -338,10 +340,11 @@
         <div id="panel-s3" class="step-panel" style="display:none">
           <div class="card">
             <h3>🔋 B3 — Quét mã bình ắc quy</h3>
-            <div class="scan-area" onclick="document.getElementById('battery-scan-input').focus()" style="margin-bottom:10px">
+            <label class="scan-area" for="battery-camera-input" style="cursor:pointer;margin-bottom:10px">
               <div class="scan-icon">📷</div>
-              <p>Quét QR bình ắc quy</p>
-            </div>
+              <p>Nhấn để quét QR bình ắc quy</p>
+              <input type="file" id="battery-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleBatteryCamera(this)">
+            </label>
             <input class="form-input" id="battery-scan-input" placeholder="Hoặc nhập mã bình..." oninput="identifyBattery(this.value)" style="text-transform:uppercase;">
             <div id="battery-identified" style="display:none"></div>
             <button class="btn btn-primary" id="btn-go-s4" onclick="goToStep4()" style="margin-top:12px;display:none">Tiếp tục →</button>
@@ -510,7 +513,7 @@
 // ============================================================
 // CONFIG - Thay URL Google Apps Script của bạn vào đây
 // ============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbwdNOKYiesc0DSjUI0H06gGtDFihaAKD76yJTCaM_c_GzrbLJ8RVXGj-t6BBGF4azZaXw/exec';
+const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
 
 // ============================================================
 // STATE
@@ -603,6 +606,7 @@ function showApp() {
   document.getElementById('settings-email').textContent = u.email || '–';
   const roleLabels = {1:'Admin Tổng',2:'Admin Tổ Chức',3:'Quản Lý',4:'Thành Viên'};
   document.getElementById('settings-role').textContent = roleLabels[u.role] || '–';
+  applyLang();
   loadDashboard();
 }
 
@@ -735,7 +739,9 @@ document.getElementById('exterior-photo-input').onchange = function() {
 // BATTERY SCAN
 function identifyBattery(barcode) {
   if (!barcode || barcode.length < 5) { document.getElementById('battery-identified').style.display = 'none'; document.getElementById('btn-go-s4').style.display = 'none'; return; }
-  const bc = state.batteryConditions.find(b => barcode.toUpperCase().startsWith(b.BatteryCode.toUpperCase()));
+  // Sort by longest prefix first, then match
+  const sorted = [...state.batteryConditions].sort((a,b) => (b.BatteryCode||'').length - (a.BatteryCode||'').length);
+  const bc = sorted.find(b => barcode.toUpperCase().startsWith(b.BatteryCode.toUpperCase()));
   if (bc) {
     state.maintenanceData.batteryBarcode = barcode;
     state.maintenanceData.batteryType = bc.BatteryType;
@@ -985,6 +991,72 @@ function formatDate(iso) {
   if (!iso) return '–';
   const d = new Date(iso);
   return d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ============================================================
+// BILINGUAL
+// ============================================================
+const LANG = {
+  vi: {
+    home:'Trang chủ', history:'Lịch sử', summary:'Tổng hợp', settings:'Cài đặt',
+    scanVIN:'Quét số VIN để bắt đầu quy trình 5 bước',
+    maintenance:'🔧 Bảo Trì Xe', hello:'Xin chào',
+    stepExterior:'Kiểm tra ngoại quan', stepBattery:'Quét bình ắc quy',
+    stepMeasure:'Đo kiểm bình', stepSave:'Lưu kết quả',
+    ok:'OK - Không lỗi', nok:'NOK - Có lỗi',
+    pass:'Pass', notPass:'Not Pass', pending:'Pending', charging:'Đang sạc', sold:'Đã bán',
+    today:'Hôm nay', allStatus:'Tất cả', completionRate:'Hoàn thành',
+    totalVIN:'Tổng cần thực hiện', passToday:'Đã Pass hôm nay',
+    saveSuccess:'Hoàn thành! VIN chuyển sang Pass.', chargingMsg:'VIN chuyển sang trạng thái Sạc. Mở khóa sau 3 giờ.',
+    loginTitle:'Đăng nhập', emailLabel:'Email đăng nhập', passLabel:'Mật khẩu',
+    loginBtn:'Đăng nhập', logout:'Đăng xuất',
+  },
+  en: {
+    home:'Home', history:'History', summary:'Summary', settings:'Settings',
+    scanVIN:'Scan VIN to start the 5-step process',
+    maintenance:'🔧 Vehicle Maintenance', hello:'Hello',
+    stepExterior:'Exterior check', stepBattery:'Scan battery', 
+    stepMeasure:'Measure battery', stepSave:'Save result',
+    ok:'OK - No defects', nok:'NOK - Has defects',
+    pass:'Pass', notPass:'Not Pass', pending:'Pending', charging:'Charging', sold:'Sold',
+    today:'Today', allStatus:'All', completionRate:'Completion',
+    totalVIN:'Total required', passToday:'Passed today',
+    saveSuccess:'Done! VIN moved to Pass.', chargingMsg:'VIN set to Charging. Unlocks in 3 hours.',
+    loginTitle:'Login', emailLabel:'Email', passLabel:'Password',
+    loginBtn:'Login', logout:'Logout',
+  }
+};
+let currentLang = localStorage.getItem('vms_lang') || 'vi';
+function t(key) { return (LANG[currentLang] || LANG.vi)[key] || key; }
+function toggleLang() {
+  currentLang = currentLang === 'vi' ? 'en' : 'vi';
+  localStorage.setItem('vms_lang', currentLang);
+  applyLang();
+}
+function applyLang() {
+  const langBtn = document.getElementById('lang-btn');
+  if (langBtn) langBtn.textContent = currentLang === 'vi' ? '🇬🇧 EN' : '🇻🇳 VI';
+  document.getElementById('tabbar-home').childNodes[1] && (document.querySelectorAll('.tab-item')[0].lastChild.textContent = t('home'));
+  document.querySelectorAll('.tab-item')[1] && (document.querySelectorAll('.tab-item')[1].lastChild.textContent = t('history'));
+  document.querySelectorAll('.tab-item')[2] && (document.querySelectorAll('.tab-item')[2].lastChild.textContent = t('summary'));
+  document.querySelectorAll('.tab-item')[3] && (document.querySelectorAll('.tab-item')[3].lastChild.textContent = t('settings'));
+}
+
+// ============================================================
+// CAMERA HANDLERS
+// ============================================================
+function handleVINCamera(input) {
+  // On mobile, camera capture doesn't directly decode QR — user types the scanned value
+  // The camera input opens the camera; for QR decode we rely on manual input fallback
+  if (input.files && input.files[0]) {
+    toast('📷 Ảnh đã chụp. Nhập số VIN từ kết quả quét vào ô bên dưới.', '');
+  }
+}
+function handleBatteryCamera(input) {
+  if (input.files && input.files[0]) {
+    toast('📷 Ảnh đã chụp. Nhập mã bình từ kết quả quét vào ô bên dưới.', '');
+    document.getElementById('battery-scan-input').focus();
+  }
 }
 
 // ============================================================
