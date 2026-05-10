@@ -364,7 +364,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
         </div>
         <div class="table-wrap">
           <div class="table-toolbar">
-            <input class="search-input" id="vin-search" placeholder="🔍 Tìm số VIN, model..." oninput="filterVINs()">
+            <input class="search-input" id="vin-search" placeholder="🔍 Tìm VIN (nhiều VIN cách nhau bằng dấu phẩy)" oninput="filterVINs()">
             <select class="select-filter" id="vin-status-filter" onchange="filterVINs()">
               <option value="">Tất cả trạng thái</option>
               <option value="Pass">✅ Pass</option>
@@ -460,7 +460,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
         <div id="import-preview" style="display:none">
           <h3 style="font-size:15px;font-weight:700;margin-bottom:12px" id="import-preview-title">–</h3>
           <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>VIN</th><th>Model</th><th>Màu</th><th>Vị trí</th><th>Trạng thái</th></tr></thead>
+            <table><thead><tr><th>#</th><th>VIN</th><th>Model</th><th>Màu</th><th>Vị trí</th><th>Trạng thái</th><th>BT cuối</th><th>BT tiếp</th></tr></thead>
             <tbody id="import-preview-body"></tbody></table>
           </div>
           <div style="margin-top:14px;display:flex;gap:10px">
@@ -584,7 +584,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
 // ============================================================
 // CONFIG
 // ============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbwdNOKYiesc0DSjUI0H06gGtDFihaAKD76yJTCaM_c_GzrbLJ8RVXGj-t6BBGF4azZaXw/exec'; // ← Thay URL của bạn
+const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL'; // ← Thay URL của bạn
 
 // ============================================================
 // STATE
@@ -710,6 +710,9 @@ async function loadAllData() {
     S.vins = vins.data || [];
     hideLoading();
     loadDashboard();
+    // If currently on search page, refresh table
+    if (S.currentPage === 'search') renderVINTable();
+    if (S.currentPage === 'accounts') renderUserTable();
   } catch(e) { hideLoading(); toast('Lỗi tải dữ liệu: ' + e.message, 'error'); }
 }
 
@@ -848,10 +851,20 @@ function filterVINs() {
 }
 
 function renderVINTable() {
-  const search = (document.getElementById('vin-search')?.value || '').toLowerCase();
+  const searchRaw = (document.getElementById('vin-search')?.value || '').trim();
   const status = document.getElementById('vin-status-filter')?.value || '';
   let data = S.vins;
-  if (search) data = data.filter(v => v.VIN.toLowerCase().includes(search) || (v.Model || '').toLowerCase().includes(search));
+  if (searchRaw) {
+    // Support multi-VIN comma-separated search
+    const terms = searchRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (terms.length > 1) {
+      // Multi-VIN exact/partial match
+      data = data.filter(v => terms.some(t => v.VIN.toLowerCase().includes(t)));
+    } else {
+      const s = terms[0];
+      data = data.filter(v => v.VIN.toLowerCase().includes(s) || (v.Model || '').toLowerCase().includes(s) || (v.ParkingLocation || '').toLowerCase().includes(s));
+    }
+  }
   if (status) data = data.filter(v => v.Status === status);
   const total = data.length;
   const pages = Math.ceil(total / PAGE_SIZE);
@@ -996,7 +1009,7 @@ async function saveUser() {
   if (!name || (!id && !email)) { toast('Điền đầy đủ thông tin bắt buộc', 'error'); return; }
   showLoading('Đang lưu...');
   let res;
-  if (id) { res = await api('updateUser', { userId: id, fullName: name, teamId }).catch(() => null); }
+  if (id) { res = await api('updateUser', { userId: id, fullName: name, teamId, role, orgId: document.getElementById('u-org').value }).catch(() => null); }
   else { res = await api('createUser', { email, fullName: name, role, orgId, teamId, password: pass }).catch(() => null); }
   hideLoading();
   if (res?.success) {
@@ -1148,16 +1161,30 @@ function handleImportFile(input) {
 function parseCSV(text, filename) {
   const lines = text.split('\n').filter(l => l.trim());
   if (lines.length < 2) { toast('File trống hoặc không đúng định dạng', 'error'); return; }
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
-  S.importRows = lines.slice(1).map(line => {
+  // Skip comment lines starting with #
+  const dataLines = lines.filter(l => !l.trim().startsWith('#'));
+  const headers = dataLines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
+  S.importRows = dataLines.slice(1).map(line => {
     const vals = line.split(',');
     const obj = {};
     headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim().replace(/"/g, ''); });
-    return { vin: obj.vin || obj['số vin'] || '', model: obj.model || '', color: obj.color || obj.màu || '', location: obj.parkinglocation || obj['vị trí'] || '' };
+    return {
+      vin: obj.vin || obj['sovin'] || '',
+      model: obj.model || '',
+      color: obj.color || obj.mau || obj.color || '',
+      location: obj.parkinglocation || obj.vitri || obj.location || '',
+      status: obj.status || obj.trangthai || '',
+      lastMaintenance: obj.lastmaintenance || obj.lastmaintenancedate || '',
+      nextMaintenance: obj.nextmaintenance || obj.nextmaintenancedate || '',
+    };
   }).filter(r => r.vin);
   document.getElementById('import-preview').style.display = 'block';
   document.getElementById('import-preview-title').textContent = `Preview: ${S.importRows.length} VIN từ "${filename}"`;
-  document.getElementById('import-preview-body').innerHTML = S.importRows.slice(0, 20).map((r, i) => `<tr><td>${i + 1}</td><td style="font-family:var(--mono)">${r.vin}</td><td>${r.model}</td><td>${r.color}</td><td>${r.location}</td><td><span class="badge b-pending">Pending</span></td></tr>`).join('') + (S.importRows.length > 20 ? `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:10px">... và ${S.importRows.length - 20} VIN khác</td></tr>` : '');
+  const stClass = {Pass:'b-pass',Pending:'b-pending','Not Pass':'b-notpass',Charging:'b-charging'};
+  document.getElementById('import-preview-body').innerHTML = S.importRows.slice(0, 20).map((r, i) => {
+    const st = r.status || 'Pending';
+    return `<tr><td>${i + 1}</td><td style="font-family:var(--mono)">${r.vin}</td><td>${r.model}</td><td>${r.color}</td><td>${r.location}</td><td><span class="badge ${stClass[st]||'b-pending'}">${st}</span></td><td style="font-size:11px;color:var(--text2)">${r.lastMaintenance||'–'}</td><td style="font-size:11px;color:var(--text2)">${r.nextMaintenance||'auto'}</td></tr>`;
+  }).join('') + (S.importRows.length > 20 ? `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:10px">... và ${S.importRows.length - 20} VIN khác</td></tr>` : '');
 }
 
 async function doImport() {
@@ -1173,28 +1200,65 @@ async function doImport() {
 }
 
 function downloadTemplate() {
-  const csv = 'VIN,Model,Color,ParkingLocation\nVIN1234567890001,Fadil,Trắng,A-01\nVIN1234567890002,Lux SA2.0,Đen,B-03\n';
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const bom = '\uFEFF'; // UTF-8 BOM to fix encoding in Excel
+  const header = 'VIN,Model,Color,ParkingLocation,Status,LastMaintenance,NextMaintenance';
+  const row1 = 'VIN1234567890001,Fadil,Trang,A-01,Pending,,';
+  const row2 = 'VIN1234567890002,Lux SA2.0,Den,B-03,Pass,2025-04-10,2025-05-10';
+  const row3 = 'VIN1234567890003,VF6,Xanh,C-05,Not Pass,,';
+  const note = '# Ghi chu: Status co the la Pending/Pass/Not Pass/Charging. LastMaintenance dinh dang YYYY-MM-DD. NextMaintenance tu dong tinh neu de trong.';
+  const csv = bom + [note, header, row1, row2, row3].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'VMS_Import_Template.csv'; a.click();
+  toast('Đã tải template mẫu', 'success');
 }
 
 // ============================================================
-// EXPORT EXCEL
+// EXPORT EXCEL - Chi tiết lịch sử bảo trì
 // ============================================================
-function exportExcel() {
-  const search = document.getElementById('vin-search')?.value.toLowerCase() || '';
+async function exportExcel() {
+  const searchRaw = document.getElementById('vin-search')?.value.trim() || '';
   const status = document.getElementById('vin-status-filter')?.value || '';
-  let data = S.vins;
-  if (search) data = data.filter(v => v.VIN.toLowerCase().includes(search) || (v.Model || '').toLowerCase().includes(search));
-  if (status) data = data.filter(v => v.Status === status);
+  let vins = S.vins;
+  if (searchRaw) {
+    const terms = searchRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    vins = vins.filter(v => terms.some(t => v.VIN.toLowerCase().includes(t)) || (!terms.length));
+  }
+  if (status) vins = vins.filter(v => v.Status === status);
+  
+  if (!vins.length) { toast('Không có VIN nào để xuất', 'warning'); return; }
+  
+  showLoading('Đang tải lịch sử bảo trì...');
+  const vinIds = vins.map(v => v.VIN);
+  const res = await api('getMaintenanceHistory', { vins: vinIds }).catch(() => null);
+  hideLoading();
+  
+  const records = res?.data || [];
   const assignedUser = (uid) => S.users.find(u => u.UserID === uid)?.FullName || uid || '';
-  const header = ['VIN','Model','Màu sắc','Vị trí','Trạng thái','Người thụ lý','Bảo trì cuối','Bảo trì tiếp'];
-  const rows = data.map(v => [v.VIN, v.Model || '', v.Color || '', v.ParkingLocation || '', v.Status, assignedUser(v.AssignedUserID), v.LastMaintenanceDate ? new Date(v.LastMaintenanceDate).toLocaleDateString('vi-VN') : '', v.NextMaintenanceDate ? new Date(v.NextMaintenanceDate).toLocaleDateString('vi-VN') : '']);
-  const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const orgName = (id) => S.orgs.find(o => o.OrgID === id)?.OrgName || id || '';
+  const teamName = (id) => S.teams.find(t => t.TeamID === id)?.TeamName || id || '';
+  
+  // Sheet 1: VIN summary
+  const vinHeader = ['Số VIN','Model','Màu sắc','Vị trí đỗ','Trạng thái','Tổ chức','Người thụ lý','Bảo trì cuối','Bảo trì tiếp theo'];
+  const vinRows = vins.map(v => [v.VIN, v.Model||'', v.Color||'', v.ParkingLocation||'', v.Status, orgName(v.OrgID), assignedUser(v.AssignedUserID), v.LastMaintenanceDate ? new Date(v.LastMaintenanceDate).toLocaleDateString('vi-VN') : '', v.NextMaintenanceDate ? new Date(v.NextMaintenanceDate).toLocaleDateString('vi-VN') : '']);
+  
+  // Sheet 2: Maintenance history
+  const maintHeader = ['Số VIN','Thời gian quét','Người thực hiện','Tổ chức','Team','Tháng','Loại BT','KQ Ngoại quan','TG Ngoại quan','Mã bình','Loại bình','CCA lần 1','Vol lần 1','KQ bình lần 1','CCA lần 2','Vol lần 2','KQ bình lần 2','Kết quả cuối','Thời gian lưu'];
+  const maintRows = records.map(r => [r.VIN, r.ScanTime ? new Date(r.ScanTime).toLocaleString('vi-VN') : '', r.PerformedBy, orgName(r.OrgID), teamName(r.TeamID), r.MaintenanceMonth, r.MaintenanceType, r.ExteriorResult, r.ExteriorTime ? new Date(r.ExteriorTime).toLocaleString('vi-VN') : '', r.BatteryBarcode, r.BatteryType, r.CCA1, r.Vol1, r.BatteryResult1, r.CCA2, r.Vol2, r.BatteryResult2, r.FinalResult, r.SaveTime ? new Date(r.SaveTime).toLocaleString('vi-VN') : '']);
+  
+  const allRows = [
+    ['=== DANH SÁCH SỐ VIN ==='],
+    vinHeader, ...vinRows,
+    [],
+    ['=== LỊCH SỬ BẢO TRÌ CHI TIẾT ==='],
+    maintHeader, ...maintRows
+  ];
+  
+  const csv = allRows.map(r => r.map(c => `"${String(c||'').replace(/"/g, '""')}"`).join(',')).join('\n');
   const bom = '\uFEFF';
   const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `VMS_Export_${new Date().toISOString().split('T')[0]}.csv`; a.click();
-  toast(`Đã xuất ${data.length} VIN`, 'success');
+  const filename = `VMS_BaoTri_${new Date().toISOString().split('T')[0]}.csv`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  toast(`✅ Đã xuất ${vins.length} VIN · ${records.length} lần bảo trì`, 'success');
 }
 
 // ============================================================
@@ -1241,6 +1305,22 @@ function renderPagination(containerId, current, total, count) {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+
+// ============================================================
+// BILINGUAL
+// ============================================================
+const ADMIN_LANG = {
+  vi: { dashboard:'Trang chủ', assign:'Phân công', search:'Tìm kiếm VIN', accounts:'Tài khoản', orgs:'Tổ chức', battery:'Điều kiện bình', import:'Import VIN', logout:'Đăng xuất', addAccount:'+ Thêm tài khoản', exportExcel:'📥 Xuất Excel', refresh:'🔄 Làm mới' },
+  en: { dashboard:'Dashboard', assign:'Assignment', search:'Search VIN', accounts:'Accounts', orgs:'Organizations', battery:'Battery Conditions', import:'Import VIN', logout:'Logout', addAccount:'+ Add Account', exportExcel:'📥 Export Excel', refresh:'🔄 Refresh' }
+};
+let adminLang = localStorage.getItem('vms_admin_lang') || 'vi';
+function at(key) { return (ADMIN_LANG[adminLang] || ADMIN_LANG.vi)[key] || key; }
+function toggleAdminLang() {
+  adminLang = adminLang === 'vi' ? 'en' : 'vi';
+  localStorage.setItem('vms_admin_lang', adminLang);
+  const btn = document.getElementById('admin-lang-btn');
+  if (btn) btn.textContent = adminLang === 'vi' ? '🇬🇧 EN' : '🇻🇳 VI';
+}
 
 // ============================================================
 // INIT
