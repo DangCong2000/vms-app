@@ -444,26 +444,51 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <!-- ── PAGE: IMPORT ── -->
       <div class="page" id="page-import">
         <div class="page-header">
-          <div><h2>📥 Import dữ liệu VIN</h2><p>Nhập hàng loạt từ file Excel</p></div>
+          <div><h2>📥 Import dữ liệu VIN</h2><p>Nhập hàng loạt từ file CSV (hỗ trợ cập nhật lịch sử bảo trì)</p></div>
           <a href="#" onclick="downloadTemplate()" class="btn btn-secondary">📄 Tải template mẫu</a>
         </div>
-        <div class="card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:20px">
-          <h3 style="font-size:15px;font-weight:800;margin-bottom:8px">Hướng dẫn</h3>
-          <p style="font-size:13px;color:var(--text2);line-height:1.7">1. Tải template Excel mẫu → 2. Điền dữ liệu VIN vào đúng cột → 3. Upload file lên đây → 4. Xác nhận import.<br>Các cột bắt buộc: <code style="background:var(--surface2);padding:2px 6px;border-radius:4px;font-family:var(--mono)">VIN, Model, Color, ParkingLocation</code></p>
+        <div class="card" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+          <h3 style="font-size:14px;font-weight:800;margin-bottom:10px">📋 Hướng dẫn các cột CSV</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+            <div style="background:var(--surface2);border-radius:8px;padding:10px">
+              <div style="font-weight:700;color:var(--danger);margin-bottom:4px">Bắt buộc</div>
+              <code style="color:var(--accent2)">VIN</code> — Số VIN<br>
+              <code style="color:var(--accent2)">Model</code> — Model xe<br>
+              <code style="color:var(--accent2)">Color</code> — Màu sắc<br>
+              <code style="color:var(--accent2)">ParkingLocation</code> — Vị trí đỗ
+            </div>
+            <div style="background:var(--surface2);border-radius:8px;padding:10px">
+              <div style="font-weight:700;color:var(--success);margin-bottom:4px">Tuỳ chọn</div>
+              <code style="color:var(--accent2)">Status</code> — Pending/Pass/Not Pass<br>
+              <code style="color:var(--accent2)">LastMaintenance</code> — YYYY-MM-DD<br>
+              <code style="color:var(--accent2)">NextMaintenance</code> — YYYY-MM-DD<br>
+              <code style="color:var(--text2)">(để trống → tự cộng 30 ngày)</code>
+            </div>
+            <div style="background:var(--surface2);border-radius:8px;padding:10px;grid-column:span 2">
+              <div style="font-weight:700;color:var(--warning);margin-bottom:4px">Lần bảo trì gần nhất (nếu có)</div>
+              <code style="color:var(--accent2)">ExteriorResult</code> — OK/NOK &nbsp;
+              <code style="color:var(--accent2)">BatteryBarcode</code> — Mã bình &nbsp;
+              <code style="color:var(--accent2)">BatteryType</code> — 32Ah/45Ah<br>
+              <code style="color:var(--accent2)">CCA1</code> — Giá trị CCA &nbsp;
+              <code style="color:var(--accent2)">Vol1</code> — Điện áp &nbsp;
+              <code style="color:var(--accent2)">BatteryResult1</code> — OK/NOK &nbsp;
+              <code style="color:var(--accent2)">FinalResult</code> — Pass/Not Pass
+            </div>
+          </div>
         </div>
         <div class="import-drop" id="import-drop" onclick="document.getElementById('import-file').click()">
-          <input type="file" id="import-file" accept=".xlsx,.xls,.csv" onchange="handleImportFile(this)">
-          <div style="font-size:32px;margin-bottom:8px">📂</div>
-          <p style="font-weight:700">Nhấn để chọn file Excel / CSV</p>
-          <p style="color:var(--text3);font-size:12px;margin-top:4px">Hỗ trợ .xlsx, .xls, .csv</p>
+          <input type="file" id="import-file" accept=".csv" onchange="handleImportFile(this)">
+          <div style="font-size:36px;margin-bottom:8px">📂</div>
+          <p style="font-weight:700;font-size:15px">Nhấn để chọn file CSV</p>
+          <p style="color:var(--text3);font-size:12px;margin-top:4px">Định dạng .csv, mã hoá UTF-8</p>
         </div>
         <div id="import-preview" style="display:none">
           <h3 style="font-size:15px;font-weight:700;margin-bottom:12px" id="import-preview-title">–</h3>
-          <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>VIN</th><th>Model</th><th>Màu</th><th>Vị trí</th><th>Trạng thái</th><th>BT cuối</th><th>BT tiếp</th></tr></thead>
+          <div style="overflow-x:auto" class="table-wrap">
+            <table><thead><tr><th>#</th><th>VIN</th><th>Model</th><th>Màu</th><th>Vị trí</th><th>Trạng thái</th><th>BT cuối</th><th>BT tiếp</th><th>Ngoại quan</th><th>CCA1</th><th>Vol1</th><th>Bình</th><th>KQ cuối</th></tr></thead>
             <tbody id="import-preview-body"></tbody></table>
           </div>
-          <div style="margin-top:14px;display:flex;gap:10px">
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-primary" id="btn-do-import" onclick="doImport()">📥 Xác nhận Import</button>
             <button class="btn btn-secondary" onclick="document.getElementById('import-preview').style.display='none'">Hủy</button>
           </div>
@@ -687,6 +712,7 @@ function navigate(page) {
   if (page === 'accounts') renderUserTable();
   if (page === 'orgs') renderOrgTable();
   if (page === 'battery') loadBatteries();
+  setTimeout(applyAdminLang, 50);
 }
 
 function toggleSidebar() {
@@ -710,6 +736,7 @@ async function loadAllData() {
     S.vins = vins.data || [];
     hideLoading();
     loadDashboard();
+    applyAdminLang();
     // If currently on search page, refresh table
     if (S.currentPage === 'search') renderVINTable();
     if (S.currentPage === 'accounts') renderUserTable();
@@ -1162,20 +1189,45 @@ function parseCSV(text, filename) {
   const lines = text.split('\n').filter(l => l.trim());
   if (lines.length < 2) { toast('File trống hoặc không đúng định dạng', 'error'); return; }
   // Skip comment lines starting with #
-  const dataLines = lines.filter(l => !l.trim().startsWith('#'));
-  const headers = dataLines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''));
+  const dataLines = lines.filter(l => !l.trim().startsWith('#') && l.trim());
+  const rawHeaders = dataLines[0].split(',').map(h => h.trim().replace(/"/g,''));
+  const headers = rawHeaders.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  
+  function getField(obj, ...keys) {
+    for (const k of keys) { if (obj[k] !== undefined && obj[k] !== '') return obj[k]; }
+    return '';
+  }
+  
   S.importRows = dataLines.slice(1).map(line => {
-    const vals = line.split(',');
+    // Handle quoted CSV values
+    const vals = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    vals.push(cur.trim());
+    
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = (vals[i] || '').trim().replace(/"/g, ''); });
+    headers.forEach((h, i) => { obj[h] = (vals[i] || '').replace(/"/g, '').trim(); });
+    
     return {
-      vin: obj.vin || obj['sovin'] || '',
-      model: obj.model || '',
-      color: obj.color || obj.mau || obj.color || '',
-      location: obj.parkinglocation || obj.vitri || obj.location || '',
-      status: obj.status || obj.trangthai || '',
-      lastMaintenance: obj.lastmaintenance || obj.lastmaintenancedate || '',
-      nextMaintenance: obj.nextmaintenance || obj.nextmaintenancedate || '',
+      vin: getField(obj, 'vin', 'sovin', 'vincode'),
+      model: getField(obj, 'model', 'mau', 'modelname'),
+      color: getField(obj, 'color', 'mausac', 'colour'),
+      location: getField(obj, 'parkinglocation', 'vitri', 'location', 'parking'),
+      status: getField(obj, 'status', 'trangthai'),
+      lastMaintenance: getField(obj, 'lastmaintenance', 'lastmaintenancedate', 'batrieuoi', 'btcuoi'),
+      nextMaintenance: getField(obj, 'nextmaintenance', 'nextmaintenancedate', 'batrietiep', 'bttiep'),
+      // Maintenance history fields
+      exteriorResult: getField(obj, 'exteriorresult', 'ngoaiaquan', 'exterior'),
+      batteryBarcode: getField(obj, 'batterybarcode', 'mabinh', 'barcode'),
+      batteryType: getField(obj, 'batterytype', 'loaibinh', 'battery'),
+      cca1: getField(obj, 'cca1', 'cca'),
+      vol1: getField(obj, 'vol1', 'vol', 'voltage'),
+      batteryResult1: getField(obj, 'batteryresult1', 'kqbinh', 'batteryresult'),
+      finalResult: getField(obj, 'finalresult', 'ketquacuoi', 'result'),
     };
   }).filter(r => r.vin);
   document.getElementById('import-preview').style.display = 'block';
@@ -1183,8 +1235,23 @@ function parseCSV(text, filename) {
   const stClass = {Pass:'b-pass',Pending:'b-pending','Not Pass':'b-notpass',Charging:'b-charging'};
   document.getElementById('import-preview-body').innerHTML = S.importRows.slice(0, 20).map((r, i) => {
     const st = r.status || 'Pending';
-    return `<tr><td>${i + 1}</td><td style="font-family:var(--mono)">${r.vin}</td><td>${r.model}</td><td>${r.color}</td><td>${r.location}</td><td><span class="badge ${stClass[st]||'b-pending'}">${st}</span></td><td style="font-size:11px;color:var(--text2)">${r.lastMaintenance||'–'}</td><td style="font-size:11px;color:var(--text2)">${r.nextMaintenance||'auto'}</td></tr>`;
-  }).join('') + (S.importRows.length > 20 ? `<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:10px">... và ${S.importRows.length - 20} VIN khác</td></tr>` : '');
+    const extIcon = r.exteriorResult === 'OK' ? '✅' : r.exteriorResult === 'NOK' ? '❌' : '–';
+    const batIcon = r.batteryResult1 === 'OK' ? '✅' : r.batteryResult1 === 'NOK' ? '❌' : '–';
+    const finalIcon = r.finalResult === 'Pass' ? '✅' : r.finalResult === 'Not Pass' ? '❌' : '–';
+    return `<tr>
+      <td>${i + 1}</td>
+      <td style="font-family:var(--mono);font-size:12px">${r.vin}</td>
+      <td>${r.model}</td><td>${r.color}</td><td>${r.location}</td>
+      <td><span class="badge ${stClass[st]||'b-pending'}">${st}</span></td>
+      <td style="font-size:11px;color:var(--text2)">${r.lastMaintenance||'–'}</td>
+      <td style="font-size:11px;color:var(--text2)">${r.nextMaintenance||'auto+30d'}</td>
+      <td style="font-size:12px">${extIcon} ${r.exteriorResult||''}</td>
+      <td style="font-size:12px;font-family:var(--mono)">${r.cca1||'–'}</td>
+      <td style="font-size:12px;font-family:var(--mono)">${r.vol1||'–'}</td>
+      <td style="font-size:12px">${batIcon} ${r.batteryType||''}</td>
+      <td style="font-size:12px">${finalIcon} ${r.finalResult||''}</td>
+    </tr>`;
+  }).join('') + (S.importRows.length > 20 ? `<tr><td colspan="13" style="text-align:center;color:var(--text3);padding:10px">... và ${S.importRows.length - 20} VIN khác</td></tr>` : '');
 }
 
 async function doImport() {
@@ -1200,16 +1267,19 @@ async function doImport() {
 }
 
 function downloadTemplate() {
-  const bom = '\uFEFF'; // UTF-8 BOM to fix encoding in Excel
-  const header = 'VIN,Model,Color,ParkingLocation,Status,LastMaintenance,NextMaintenance';
-  const row1 = 'VIN1234567890001,Fadil,Trang,A-01,Pending,,';
-  const row2 = 'VIN1234567890002,Lux SA2.0,Den,B-03,Pass,2025-04-10,2025-05-10';
-  const row3 = 'VIN1234567890003,VF6,Xanh,C-05,Not Pass,,';
-  const note = '# Ghi chu: Status co the la Pending/Pass/Not Pass/Charging. LastMaintenance dinh dang YYYY-MM-DD. NextMaintenance tu dong tinh neu de trong.';
-  const csv = bom + [note, header, row1, row2, row3].join('\n');
+  const bom = '\uFEFF';
+  const note1 = '# Template Import VIN - VMS System';
+  const note2 = '# Bat buoc: VIN, Model, Color, ParkingLocation';
+  const note3 = '# Tuy chon: Status (Pending/Pass/Not Pass), LastMaintenance (YYYY-MM-DD), NextMaintenance (tu dong +30 ngay neu de trong)';
+  const note4 = '# Lich su bao tri: ExteriorResult (OK/NOK), BatteryBarcode, BatteryType (32Ah/45Ah), CCA1, Vol1, BatteryResult1 (OK/NOK), FinalResult (Pass/Not Pass)';
+  const header = 'VIN,Model,Color,ParkingLocation,Status,LastMaintenance,NextMaintenance,ExteriorResult,BatteryBarcode,BatteryType,CCA1,Vol1,BatteryResult1,FinalResult';
+  const row1 = 'VIN1234567890001,Fadil,Trang,A-01,Pending,,,,,,,,, ';
+  const row2 = 'VIN1234567890002,Lux SA2.0,Den,B-03,Pass,2025-04-10,2025-05-10,OK,EEP73120002ABC,32Ah,145,12.8,OK,Pass';
+  const row3 = 'VIN1234567890003,VF6,Xanh,C-05,Not Pass,2025-04-15,,NOK,EEP30032001XYZ,45Ah,280,12.2,NOK,Not Pass';
+  const csv = bom + [note1, note2, note3, note4, header, row1, row2, row3].join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'VMS_Import_Template.csv'; a.click();
-  toast('Đã tải template mẫu', 'success');
+  toast('✅ Đã tải template mẫu (14 cột)', 'success');
 }
 
 // ============================================================
@@ -1310,16 +1380,143 @@ document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('cli
 // BILINGUAL
 // ============================================================
 const ADMIN_LANG = {
-  vi: { dashboard:'Trang chủ', assign:'Phân công', search:'Tìm kiếm VIN', accounts:'Tài khoản', orgs:'Tổ chức', battery:'Điều kiện bình', import:'Import VIN', logout:'Đăng xuất', addAccount:'+ Thêm tài khoản', exportExcel:'📥 Xuất Excel', refresh:'🔄 Làm mới' },
-  en: { dashboard:'Dashboard', assign:'Assignment', search:'Search VIN', accounts:'Accounts', orgs:'Organizations', battery:'Battery Conditions', import:'Import VIN', logout:'Logout', addAccount:'+ Add Account', exportExcel:'📥 Export Excel', refresh:'🔄 Refresh' }
+  vi: {
+    dashboard:'Trang chủ', assign:'Phân công', search:'Tìm kiếm VIN', accounts:'Tài khoản',
+    orgs:'Tổ chức', battery:'Điều kiện bình', import:'Import VIN',
+    logout:'Đăng xuất', addAccount:'+ Thêm tài khoản', exportExcel:'📥 Xuất Excel', refresh:'🔄 Làm mới',
+    dashTitle:'📊 Tổng quan hệ thống', dashSub:'Theo dõi tiến độ bảo trì theo thời gian thực',
+    progressTitle:'Tiến độ bảo trì hôm nay', totalNeeded:'📋 Tổng cần thực hiện',
+    passedToday:'✅ Đã Pass hôm nay', pending:'⏳ Pending', notPass:'❌ Not Pass', charging:'🔋 Đang sạc',
+    totalVIN:'Tổng VIN', passedMonth:'Pass (30 ngày)', soldLabel:'Đã bán',
+    assignTitle:'📋 Phân công công việc', assignSub:'Chia số VIN cho từng thành viên',
+    autoAssign:'⚡ Chia đều tự động', saveAssign:'💾 Lưu phân công',
+    memberCol:'👥 Thành viên', vinCol:'🚗 Số VIN cần phân công',
+    searchTitle:'🔍 Tìm kiếm VIN', searchSub:'Tra cứu và quản lý số VIN',
+    accountTitle:'👤 Quản lý tài khoản', accountSub:'Tạo, sửa, khóa tài khoản người dùng',
+    orgTitle:'🏢 Quản lý tổ chức', batteryTitle:'🔋 Điều kiện bình ắc quy',
+    importTitle:'📥 Import dữ liệu VIN', downloadTemplate:'📄 Tải template mẫu',
+    vinSearch:'🔍 Tìm VIN (nhiều VIN cách nhau bằng dấu phẩy)',
+    userSearch:'🔍 Tìm tên, email...',
+    allStatus:'Tất cả trạng thái', allRoles:'Tất cả cấp bậc', allStatusUser:'Tất cả trạng thái',
+    today:'Hôm nay', completion:'Hoàn thành', assignHint:'Chọn thành viên → chọn VIN → Lưu phân công',
+    noData:'Không có dữ liệu', notLoggedIn:'Chưa đăng nhập',
+    vinAssigned:'VIN được giao', noMember:'Không có thành viên',
+    selectMember:'← Chọn thành viên để phân công',
+    alreadyAssigned:'Đã giao',
+  },
+  en: {
+    dashboard:'Dashboard', assign:'Assignment', search:'Search VIN', accounts:'Accounts',
+    orgs:'Organizations', battery:'Battery Conditions', import:'Import VIN',
+    logout:'Logout', addAccount:'+ Add Account', exportExcel:'📥 Export Excel', refresh:'🔄 Refresh',
+    dashTitle:'📊 System Overview', dashSub:'Real-time maintenance progress tracking',
+    progressTitle:"Today's Maintenance Progress", totalNeeded:'📋 Total required',
+    passedToday:'✅ Passed today', pending:'⏳ Pending', notPass:'❌ Not Pass', charging:'🔋 Charging',
+    totalVIN:'Total VINs', passedMonth:'Pass (30 days)', soldLabel:'Sold',
+    assignTitle:'📋 Work Assignment', assignSub:'Assign VINs to team members',
+    autoAssign:'⚡ Auto Distribute', saveAssign:'💾 Save Assignments',
+    memberCol:'👥 Members', vinCol:'🚗 VINs to Assign',
+    searchTitle:'🔍 Search VIN', searchSub:'Query and manage VIN numbers',
+    accountTitle:'👤 Account Management', accountSub:'Create, edit, lock user accounts',
+    orgTitle:'🏢 Organization Management', batteryTitle:'🔋 Battery Conditions',
+    importTitle:'📥 Import VIN Data', downloadTemplate:'📄 Download Template',
+    vinSearch:'🔍 Search VIN (multiple VINs separated by comma)',
+    userSearch:'🔍 Search name, email...',
+    allStatus:'All statuses', allRoles:'All roles', allStatusUser:'All statuses',
+    today:'Today', completion:'Completion', assignHint:'Select member → select VINs → Save',
+    noData:'No data', notLoggedIn:'Never logged in',
+    vinAssigned:'VINs assigned', noMember:'No members',
+    selectMember:'← Select a member to assign',
+    alreadyAssigned:'Assigned',
+  }
 };
 let adminLang = localStorage.getItem('vms_admin_lang') || 'vi';
 function at(key) { return (ADMIN_LANG[adminLang] || ADMIN_LANG.vi)[key] || key; }
 function toggleAdminLang() {
   adminLang = adminLang === 'vi' ? 'en' : 'vi';
   localStorage.setItem('vms_admin_lang', adminLang);
+  applyAdminLang();
+}
+function applyAdminLang() {
   const btn = document.getElementById('admin-lang-btn');
   if (btn) btn.textContent = adminLang === 'vi' ? '🇬🇧 EN' : '🇻🇳 VI';
+  const isEN = adminLang === 'en';
+
+  // Sidebar nav labels
+  const navMap = { 'nav-dashboard':'dashboard','nav-assign':'assign','nav-search':'search','nav-accounts':'accounts','nav-orgs':'orgs','nav-battery':'battery','nav-import':'import' };
+  Object.entries(navMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (el) { const lbl = el.querySelector('.nav-label'); if (lbl) lbl.textContent = at(key); }
+  });
+
+  // Topbar title
+  const ttMap = { dashboard:at('dashboard'), assign:at('assign'), search:at('search'), accounts:at('accounts'), orgs:at('orgs'), battery:at('battery'), import:at('import') };
+  const topTitle = document.getElementById('topbar-title');
+  if (topTitle && S.currentPage) topTitle.textContent = ttMap[S.currentPage] || topTitle.textContent;
+
+  // Dashboard
+  const dh = document.querySelector('#page-dashboard .page-header h2');
+  if (dh) dh.textContent = at('dashTitle');
+  const ds = document.querySelector('#page-dashboard .page-header p');
+  if (ds) ds.textContent = at('dashSub');
+  const pt = document.querySelector('#page-dashboard .completion-stats h3');
+  if (pt) pt.textContent = at('progressTitle');
+  const csRows = document.querySelectorAll('#page-dashboard .cs-label');
+  const csKeys = ['totalNeeded','passedToday','pending','notPass','charging'];
+  csRows.forEach((el, i) => { if (csKeys[i]) el.textContent = at(csKeys[i]); });
+  const statLabels = document.querySelectorAll('#page-dashboard .stat-label');
+  const stKeys = isEN ? ['Total VINs','Pass (30 days)','Pending','Not Pass','Charging'] : ['Tổng VIN','Pass (30 ngày)','Pending','Not Pass','Charging'];
+  statLabels.forEach((el, i) => { if (stKeys[i]) el.textContent = stKeys[i]; });
+  const statSubs = document.querySelectorAll('#page-dashboard .stat-sub');
+  const subs = isEN ? ['In system','Maintained OK','Awaiting','Needs action','Charging battery'] : ['Trong hệ thống','Đã bảo trì OK','Chờ bảo trì','Cần xử lý','Đang sạc bình'];
+  statSubs.forEach((el, i) => { if (subs[i]) el.textContent = subs[i]; });
+  const ringLbl = document.querySelector('#page-dashboard .ring-lbl');
+  if (ringLbl) ringLbl.textContent = at('today');
+  const refreshBtn = document.querySelector('#page-dashboard .btn-secondary');
+  if (refreshBtn) refreshBtn.textContent = at('refresh');
+
+  // Assignment
+  const ah = document.querySelector('#page-assign .page-header h2');
+  if (ah) ah.textContent = at('assignTitle');
+  const as_ = document.querySelector('#page-assign .page-header p');
+  if (as_) as_.textContent = at('assignSub');
+  const assignHint = document.querySelector('#page-assign > p');
+  if (assignHint) assignHint.textContent = at('assignHint');
+  const autoBtn = document.querySelector('#page-assign .btn-secondary');
+  if (autoBtn) autoBtn.textContent = at('autoAssign');
+  const saveBtn = document.querySelector('#page-assign .btn-primary');
+  if (saveBtn) saveBtn.textContent = at('saveAssign');
+  const mColHdr = document.querySelector('#assign-members')?.previousElementSibling?.querySelector('span:first-child');
+  if (mColHdr) mColHdr.textContent = at('memberCol');
+  const vColHdr = document.querySelector('#assign-vins')?.previousElementSibling?.querySelector('span:first-child');
+  if (vColHdr) vColHdr.textContent = at('vinCol');
+
+  // Search
+  const sh = document.querySelector('#page-search .page-header h2');
+  if (sh) sh.textContent = at('searchTitle');
+  const ss_ = document.querySelector('#page-search .page-header p');
+  if (ss_) ss_.textContent = at('searchSub');
+  const vs = document.getElementById('vin-search');
+  if (vs) vs.placeholder = at('vinSearch');
+  const sf = document.getElementById('vin-status-filter');
+  if (sf) sf.options[0].text = at('allStatus');
+  const exportBtn = document.querySelector('#page-search .btn-primary');
+  if (exportBtn) exportBtn.textContent = at('exportExcel');
+
+  // Accounts
+  const ach = document.querySelector('#page-accounts .page-header h2');
+  if (ach) ach.textContent = at('accountTitle');
+  const acs = document.querySelector('#page-accounts .page-header p');
+  if (acs) acs.textContent = at('accountSub');
+  const us = document.getElementById('user-search');
+  if (us) us.placeholder = at('userSearch');
+  const addBtn = document.querySelector('#page-accounts .btn-primary');
+  if (addBtn) addBtn.textContent = at('addAccount');
+
+  // Logout
+  const logoutBtn = document.querySelector('#sidebar button.btn-secondary');
+  // sidebar user section doesn't have logout, but topbar does
+  const logoutTop = document.querySelector('#topbar .btn-secondary');
+  if (logoutTop) logoutTop.textContent = at('logout');
 }
 
 // ============================================================
