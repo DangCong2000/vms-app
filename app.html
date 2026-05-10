@@ -345,7 +345,7 @@
               <p>Nhấn để quét QR bình ắc quy</p>
               <input type="file" id="battery-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleBatteryCamera(this)">
             </label>
-            <input class="form-input" id="battery-scan-input" placeholder="Hoặc nhập mã bình..." oninput="identifyBattery(this.value)" style="text-transform:uppercase;">
+            <input class="form-input" id="battery-scan-input" placeholder="Nhập hoặc quét mã bình..." oninput="identifyBattery(this.value)" autocomplete="off" spellcheck="false">
             <div id="battery-identified" style="display:none"></div>
             <button class="btn btn-primary" id="btn-go-s4" onclick="goToStep4()" style="margin-top:12px;display:none">Tiếp tục →</button>
           </div>
@@ -622,6 +622,7 @@ function switchTab(tab) {
   if (tab === 'history') loadHistory();
   if (tab === 'summary') loadDashboard();
   if (tab === 'settings') loadSettings();
+  applyLang();
 }
 
 // ============================================================
@@ -683,7 +684,7 @@ function selectType(type) {
   document.getElementById('type-pdi').classList.toggle('selected', type === 'PDI');
 }
 
-const STEP_LABELS = ['Loại','Ngoại quan','Bình ắc quy','Đo kiểm','Lưu'];
+const STEP_LABELS = (window._STEP_LABELS) || ['Loại','Ngoại quan','Bình ắc quy','Đo kiểm','Lưu'];
 function startStep(stepNum) {
   document.getElementById('panel-type-select').classList.remove('active');
   document.getElementById('step-progress-bar').style.display = 'block';
@@ -738,10 +739,14 @@ document.getElementById('exterior-photo-input').onchange = function() {
 
 // BATTERY SCAN
 function identifyBattery(barcode) {
-  if (!barcode || barcode.length < 5) { document.getElementById('battery-identified').style.display = 'none'; document.getElementById('btn-go-s4').style.display = 'none'; return; }
-  // Sort by longest prefix first, then match
+  if (!barcode || barcode.length < 4) { document.getElementById('battery-identified').style.display = 'none'; document.getElementById('btn-go-s4').style.display = 'none'; return; }
+  const bUpper = barcode.toUpperCase().trim();
+  // Match: barcode starts with prefix OR prefix contains barcode OR barcode contains prefix
   const sorted = [...state.batteryConditions].sort((a,b) => (b.BatteryCode||'').length - (a.BatteryCode||'').length);
-  const bc = sorted.find(b => barcode.toUpperCase().startsWith(b.BatteryCode.toUpperCase()));
+  const bc = sorted.find(b => {
+    const code = (b.BatteryCode||'').toUpperCase().trim();
+    return bUpper.startsWith(code) || code.startsWith(bUpper) || code.includes(bUpper) || bUpper.includes(code);
+  });
   if (bc) {
     state.maintenanceData.batteryBarcode = barcode;
     state.maintenanceData.batteryType = bc.BatteryType;
@@ -1036,10 +1041,91 @@ function toggleLang() {
 function applyLang() {
   const langBtn = document.getElementById('lang-btn');
   if (langBtn) langBtn.textContent = currentLang === 'vi' ? '🇬🇧 EN' : '🇻🇳 VI';
-  document.getElementById('tabbar-home').childNodes[1] && (document.querySelectorAll('.tab-item')[0].lastChild.textContent = t('home'));
-  document.querySelectorAll('.tab-item')[1] && (document.querySelectorAll('.tab-item')[1].lastChild.textContent = t('history'));
-  document.querySelectorAll('.tab-item')[2] && (document.querySelectorAll('.tab-item')[2].lastChild.textContent = t('summary'));
-  document.querySelectorAll('.tab-item')[3] && (document.querySelectorAll('.tab-item')[3].lastChild.textContent = t('settings'));
+  const isEN = currentLang === 'en';
+
+  // Tab bar
+  const tabs = document.querySelectorAll('.tab-item');
+  const tabKeys = ['home','history','summary','settings'];
+  tabs.forEach((tab, i) => { const span = tab.querySelector('span') || tab.lastChild; if (span && span.nodeType===3) tab.lastChild.textContent = t(tabKeys[i]); });
+
+  // Header greeting
+  const greeting = document.getElementById('hdr-name');
+  if (greeting) {
+    const helloEl = greeting.parentElement;
+    if (helloEl) helloEl.childNodes[0].textContent = t('hello') + ', ';
+  }
+
+  // Step header
+  const stepH = document.querySelector('#tab-home .step-header h2');
+  if (stepH) stepH.textContent = t('maintenance');
+  const stepP = document.querySelector('#tab-home .step-header p');
+  if (stepP) stepP.textContent = t('scanVIN');
+  const scanLabel = document.getElementById('scan-tap-label');
+  if (scanLabel) scanLabel.textContent = isEN ? 'Tap to scan QR / VIN Barcode' : 'Nhấn để quét QR / Barcode VIN';
+
+  // Maintenance type buttons
+  const typeMonthly = document.getElementById('type-monthly');
+  if (typeMonthly) typeMonthly.querySelector('h4').innerHTML = isEN ? 'Monthly<br>Maintenance' : 'Bảo dưỡng<br>hàng tháng';
+
+  // Step panel titles
+  const s2title = document.querySelector('#panel-s2 h3');
+  if (s2title) s2title.textContent = isEN ? '👁️ B2 — Exterior Check' : '👁️ B2 — Kiểm tra ngoại quan';
+  const s3title = document.querySelector('#panel-s3 h3');
+  if (s3title) s3title.textContent = isEN ? '🔋 B3 — Scan Battery QR' : '🔋 B3 — Quét mã bình ắc quy';
+  const s4title = document.querySelector('#panel-s4 h3');
+  if (s4title) s4title.textContent = isEN ? '⚡ B4 — Battery Measurement' : '⚡ B4 — Đo kiểm bình ắc quy';
+  const s5title = document.querySelector('#panel-s5 h3');
+  if (s5title) s5title.textContent = isEN ? '💾 B5 — Save Result' : '💾 B5 — Lưu kết quả';
+
+  // OK/NOK buttons
+  const btnOK = document.querySelector('.btn-ok');
+  if (btnOK) btnOK.innerHTML = isEN ? '✅ OK<br><small>No defects</small>' : '✅ OK<br><small>Không lỗi</small>';
+  const btnNOK = document.querySelector('.btn-nok');
+  if (btnNOK) btnNOK.innerHTML = isEN ? '❌ NOK<br><small>Has defects</small>' : '❌ NOK<br><small>Có lỗi</small>';
+
+  // History tab
+  const histH = document.querySelector('#tab-history h2');
+  if (histH) histH.textContent = isEN ? '📋 Maintenance History' : '📋 Lịch sử bảo trì';
+  const htabs = document.querySelectorAll('.htab');
+  const htabLabels = isEN ? ['All','Pass ✅','Not Pass ❌','Charging 🔋'] : ['Tất cả','Pass ✅','Not Pass ❌','Sạc 🔋'];
+  htabs.forEach((ht, i) => { if (htabLabels[i]) ht.textContent = htabLabels[i]; });
+
+  // Summary tab  
+  const sumH = document.querySelector('#tab-summary h2');
+  if (sumH) sumH.textContent = isEN ? '📊 Today Summary' : '📊 Tổng hợp hôm nay';
+  const ringLbl = document.querySelector('.ring-label');
+  if (ringLbl) ringLbl.textContent = isEN ? 'Today' : 'Hôm nay';
+  const statLbls = document.querySelectorAll('.stat-card .lbl');
+  const lblTexts = isEN
+    ? ['📋 Required today','✅ Passed today','❌ Not Pass','🔋 Charging']
+    : ['📋 Cần thực hiện','✅ Đã Pass hôm nay','❌ Not Pass','🔋 Đang sạc'];
+  statLbls.forEach((el, i) => { if (lblTexts[i]) el.textContent = lblTexts[i]; });
+
+  // Settings tab
+  const setH = document.querySelector('#tab-settings .settings-btn:nth-child(3) div div:first-child');
+  const settingsBtns = document.querySelectorAll('.settings-btn');
+  if (settingsBtns[0]) settingsBtns[0].querySelector('div > div:first-child').textContent = isEN ? 'Personal Info' : 'Thông tin cá nhân';
+  if (settingsBtns[1]) settingsBtns[1].querySelector('div > div:first-child').textContent = isEN ? 'Change Password' : 'Đổi mật khẩu';
+  const logoutBtn = document.querySelector('.btn-logout');
+  if (logoutBtn) logoutBtn.textContent = isEN ? 'Logout' : 'Đăng xuất';
+
+  // VIN info labels
+  const vinLabels = document.querySelectorAll('.vin-info-item label');
+  const vinLabelTexts = isEN ? ['Model','Color','Parking','Next Service'] : ['Mẫu xe','Màu sắc','Vị trí đỗ','Bảo trì tiếp'];
+  vinLabels.forEach((el, i) => { if (vinLabelTexts[i]) el.textContent = vinLabelTexts[i]; });
+
+  // Login page
+  document.querySelector('.login-logo p').textContent = isEN ? 'Vehicle Maintenance System' : 'Hệ thống bảo trì xe';
+  const emailLbl = document.querySelector('#screen-login .form-group:nth-child(2) label');
+  if (emailLbl) emailLbl.textContent = t('emailLabel');
+  const passLbl = document.querySelector('#screen-login .form-group:nth-child(3) label');
+  if (passLbl) passLbl.textContent = t('passLabel');
+  const loginBtn = document.getElementById('btn-login');
+  if (loginBtn) loginBtn.textContent = t('loginBtn');
+
+  // Step progress labels
+  const STEP_LABELS = isEN ? ['Type','Exterior','Battery','Measure','Save'] : ['Loại','Ngoại quan','Bình ắc quy','Đo kiểm','Lưu'];
+  window._STEP_LABELS = STEP_LABELS;
 }
 
 // ============================================================
