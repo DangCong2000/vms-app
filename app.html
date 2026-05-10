@@ -510,7 +510,7 @@
 // ============================================================
 // CONFIG - Thay URL Google Apps Script của bạn vào đây
 // ============================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbwvA02181G93m1eUsEx8qURzx7qdBIRmO4mfr9AamuzWZ1vXBYL63cOAQGkgJzCUh5rQw/exec';
+const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL';
 
 // ============================================================
 // STATE
@@ -539,7 +539,8 @@ let state = {
 // ============================================================
 async function api(action, params = {}) {
   const body = { action, token: state.token, ...params };
-  const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
+  const url = API_URL + '?payload=' + encodeURIComponent(JSON.stringify(body));
+  const res = await fetch(url, { method: 'GET', redirect: 'follow' });
   return res.json();
 }
 
